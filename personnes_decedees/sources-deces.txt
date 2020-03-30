@@ -1,8 +1,3 @@
-1970;https://www.data.gouv.fr/fr/datasets/r/2854ed88-bd99-496b-b6fe-c924f7251012
-1971;https://www.data.gouv.fr/fr/datasets/r/b54456c9-6101-4327-8712-bfc2495e73e1
-1972;https://www.data.gouv.fr/fr/datasets/r/ad4b538e-f3f5-495a-b5f8-e9d871e8e75f
-1973;https://www.data.gouv.fr/fr/datasets/r/a838e3f1-fd2c-4c74-ab20-482a86818759
-1974;https://www.data.gouv.fr/fr/datasets/r/1ad960e9-26f8-4a60-9e93-73ab870b8ea6
 1975;https://www.data.gouv.fr/fr/datasets/r/3947b2ea-39af-4ef0-8986-89690d1f7de4
 1976;https://www.data.gouv.fr/fr/datasets/r/a1d29a8b-1141-4bfd-a682-1637218e5e57
 1977;https://www.data.gouv.fr/fr/datasets/r/475692dc-2916-492b-9f0d-6e033d8e2b81
