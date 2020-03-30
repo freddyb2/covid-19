@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 input_file = ARGV[0]
 
 SEPARATOR = ';'
@@ -15,7 +17,9 @@ File.open(input_file, 'w') do |output_file|
   text.each_line do |line|
     elements = line.split(SEPARATOR)
     elements[3] = to_code_dep(elements[3])
-    next if elements[3].to_i > 976
+    code_dep = elements[3].to_i
+    next if code_dep > 976 || code_dep == 0
+
     output_file.puts elements.join(SEPARATOR)
   end
 end
