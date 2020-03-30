@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
 csv_dir = 'deces_csv'
-database_dir = 'database'
 
+database_dir = 'database'
 `rm -rf #{database_dir}`
 `mkdir #{database_dir}`
 
