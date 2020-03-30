@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+CARRIAGE_UNIX = "\n"
+
 csv_dir = 'deces_csv'
 
 database_dir = 'database'
@@ -17,7 +19,6 @@ end
 database = Hash.new(Hash.new(0))
 
 files = `ls #{csv_dir}`
-CARRIAGE_UNIX = "\n"
 files.gsub!(/\r\n?/, CARRIAGE_UNIX)
 files.each_line do |file|
   filename = file
