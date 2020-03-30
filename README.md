@@ -32,6 +32,16 @@ Code Officiel Géographique en vigueur au moment de la prise en compte du décè
 - Date du décès
 - Code département du décès
 
+### Database
+
+Dans le fichier `annee/code_departement`, chaque ligne : `date_au_format_MMJJ;nb_deces`
+
+## Population
+
+### Database
+
+Dans le fichier `annee.csv`, chaque ligne : `code_departement;nb_habitants`
+
 ## Data sources
 
 Death data form INSEE (French Statistic Agency) : https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-decedees/
