@@ -15,7 +15,8 @@ File.open(input_file, 'w') do |output_file|
   text.each_line do |line|
     elements = line.split(SEPARATOR)
     elements[3] = to_code_dep(elements[3])
-    output_file.puts elements.join(SEPARATOR) if elements[3].to_i < 980
+    next if elements[3].to_i > 976
+    output_file.puts elements.join(SEPARATOR)
   end
 end
 
