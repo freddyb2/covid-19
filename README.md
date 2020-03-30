@@ -44,4 +44,5 @@ Population data time serie from INSEE - 2020-03-27 Weekly update for Covid : htt
 
 Number of admissions in hospitals due to influanza 2010-2020 from Sante Publique France : (https://www.santepubliquefrance.fr/)
 
-
+Nombre de personnes décédées par département - quotidiennement
+https://www.data.gouv.fr/fr/datasets/nombre-de-deces-quotidiens-par-departement/
