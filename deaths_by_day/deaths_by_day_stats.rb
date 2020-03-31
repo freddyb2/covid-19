@@ -3,7 +3,6 @@
 
 require 'date'
 
-
 require 'io/console'
 
 def continue_story
@@ -13,8 +12,8 @@ def continue_story
 end
 
 CARRIAGE_UNIX = "\n"
-POPULATION_DATABASE_PATH = 'population/database'
-DEATHS_DATABASE_PATH = 'personnes_decedees/database'
+POPULATION_DATABASE_PATH = '../population/database'
+DEATHS_DATABASE_PATH = '../personnes_decedees/database'
 YDAYS = (1..365).to_a.freeze
 YEARS = (1975..2019).to_a.freeze
 
@@ -54,11 +53,12 @@ def lines_in_file(*args)
   lines.split(CARRIAGE_UNIX)
 end
 
+#TODO refactor in a more functional way
 def load_populations
   populations = Hash.new({})
   files_in_dir(POPULATION_DATABASE_PATH).map do |filename|
     year = filename[/\d+/]
-    populations[year] = lines_in_file(POPULATION_DATABASE_PATH, filename).map { |line| line.split(';') }.reduce(populations[year]) { |hash, line_split| hash.merge(line_split[0] => line_split[1].to_i) }
+    populations[year.to_i] = lines_in_file(POPULATION_DATABASE_PATH, filename).map { |line| line.split(';') }.reduce(populations[year]) { |hash, line_split| hash.merge(line_split[0] => line_split[1].to_i) }
   end
   populations
 end
@@ -77,11 +77,6 @@ def standard_deviation(serie)
   Math.sqrt(serie.inject(0) { |accum, i| accum + ((i - mean) ** 2) } / (serie.length - 1).to_f)
 end
 
-
-def stats(serie)
-  { mean: mean(serie), standard_deviation: standard_deviation(serie) }
-end
-
 def to_date_nd_deaths(year, split)
   begin
     day = split[0]
@@ -94,30 +89,35 @@ def to_date_nd_deaths(year, split)
 end
 
 
-populations = load_populations
+POPULATIONS = load_populations.freeze
 
-def format_serie(day, serie)
-  raise "Error not enough elements in serie (day #{day} - serie.count = #{serie.count})" if day <= 365 && serie.count < 32
-  { day: day, serie_count: serie.count, mean: mean(serie), standard_deviation: standard_deviation(serie) }
+def format_serie(day, series)
+  return nil if day > 365
+  raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < 32
+
+  [day, mean(series), standard_deviation(series)]
 end
 
+STATS_DIR = 'stats'
+`rm -rf #{STATS_DIR}`
+`mkdir #{STATS_DIR}`
+
 DEPARTMENTS_CODES.map do |department_code|
-  [
-      department_code,
-      YEARS.map do |year|
-        lines_in_file(DEATHS_DATABASE_PATH, year.to_s, department_code)
-            .map { |line| line.split(';') }
-            .map { |split| to_date_nd_deaths(year, split) }
-            .compact
-      end.flatten(1)
-          .reduce(Hash.new { [] }) do |hash, year_day_deaths|
-        year = year_day_deaths[0]
-        day = year_day_deaths[1]
-        nb_deaths = year_day_deaths[2]
-        death_by_pop = nb_deaths * 100000 / populations[year.to_s][department_code].to_f
-        hash.merge(day => hash[day].push(death_by_pop))
-      end.map(&method(:format_serie))
-  ]
+  File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
+    YEARS.map do |year|
+      lines_in_file(DEATHS_DATABASE_PATH, year.to_s, department_code)
+          .map { |line| line.split(';') }
+          .map { |split| to_date_nd_deaths(year, split) }
+          .compact
+    end.flatten(1)
+        .reduce(Hash.new { [] }) do |hash, year_day_deaths|
+      year = year_day_deaths[0]
+      day = year_day_deaths[1]
+      nb_deaths = year_day_deaths[2]
+      death_by_pop = nb_deaths * 100000 / POPULATIONS[year][department_code].to_f
+      hash.merge(day => hash[day].push(death_by_pop))
+    end.map(&method(:format_serie)).compact.each { |data| output_file.puts data.join(';') }
+  end
 end
 
 # puts deaths_by_day
