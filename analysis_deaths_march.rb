@@ -22,11 +22,24 @@ xlsx = Roo::Excelx.new('deaths_march_2020/2020-03-27_deces_quotidiens_departemen
 COLUMN_DEMATERIALIZED_DEATHS_2020 = 2
 COLUMN_TOTAL_DEATHS_2020 = 3
 FIRST_DAY_ROW_INDEX = 3
+
+def cumulated_deaths(column, day, department_sheet)
+  department_sheet.column(column)[day + FIRST_DAY_ROW_INDEX].to_i
+end
+
+def death_cumulated_before(column, day, department_sheet)
+  day == 1 ? 0 : cumulated_deaths(column, day - 1, department_sheet)
+end
+
+def deaths_on_day(department_sheet, column, day)
+  [cumulated_deaths(column, day, department_sheet) - death_cumulated_before(column, day, department_sheet), 0].max
+end
+
 DEPARTMENTS_CODES.each do |dep_code|
   department_sheet = xlsx.sheet(dep_code)
   (1..30)
       .to_a
-      .map { |day| ([Date.new(2020, 3, day).yday] + [COLUMN_DEMATERIALIZED_DEATHS_2020, COLUMN_TOTAL_DEATHS_2020].map { |column| department_sheet.column(column)[day + FIRST_DAY_ROW_INDEX].to_i }) }
+      .map { |day| ([Date.new(2020, 3, day).yday] + [COLUMN_DEMATERIALIZED_DEATHS_2020, COLUMN_TOTAL_DEATHS_2020].map { |column| deaths_on_day(department_sheet, column, day) }) }
       .each { |info| puts info.join(' | ') }
   # puts "#{dep_code}=> #{department_sheet.row_count}"
   exit
