@@ -24,7 +24,6 @@ end
 def load_populations
   populations = Hash.new({})
   files_in_dir(POPULATION_DATABASE_PATH).map do |filename|
-    # puts "<#{filename.scan(/([^.]*).csv/)}>"
     year = filename[/\d+/]
     populations[year] = lines_in_file(File.join(POPULATION_DATABASE_PATH, filename)).map { |line| line.split(';') }.reduce(populations[year]) { |hash, line_split| hash.merge(line_split[0] => line_split[1]) }
   end
