@@ -15,7 +15,7 @@ CARRIAGE_UNIX = "\n"
 POPULATION_DATABASE_PATH = '../population/database'
 DEATHS_DATABASE_PATH = '../personnes_decedees/database'
 YDAYS = (1..365).to_a.freeze
-YEARS = (1975..2019).to_a.freeze
+YEARS = (1995..2019).to_a.freeze
 
 def generate_dep_codes(first_digit, last_digits)
   last_digits.map { |last_digit| "#{first_digit}#{last_digit}" }
@@ -24,7 +24,7 @@ end
 DEPARTMENTS_CODES = [
     generate_dep_codes('0', (1..9).to_a),
     generate_dep_codes('1', (0..9).to_a),
-    generate_dep_codes('2', (1..9).to_a), # Corse ignored for the moment
+    generate_dep_codes('2', %w[A B] + (1..9).to_a),
     generate_dep_codes('3', (0..9).to_a),
     generate_dep_codes('4', (0..9).to_a),
     generate_dep_codes('5', (0..9).to_a),
@@ -99,7 +99,7 @@ POPULATIONS = load_populations.freeze
 
 def format_serie(day, series)
   return nil if day > 365
-  raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < 32
+  raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (YEARS.count * 2) / 3 || series.count > YEARS.count
 
   [day, mean(series), standard_deviation(series)]
 end
@@ -128,6 +128,7 @@ DEPARTMENTS_CODES.map do |department_code|
         .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
         .map(&method(:format_serie))
         .compact
+        .sort { |a, b| a[0] <=> b[0] }
         .each { |data| output_file.puts data.join(';') }
   end
 end
