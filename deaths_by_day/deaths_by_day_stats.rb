@@ -53,28 +53,30 @@ def lines_in_file(*args)
   lines.split(CARRIAGE_UNIX)
 end
 
-#TODO refactor in a more functional way
-def load_populations
-  populations = Hash.new({})
-  files_in_dir(POPULATION_DATABASE_PATH).map do |filename|
-    year = filename[/\d+/]
-    populations[year.to_i] = lines_in_file(POPULATION_DATABASE_PATH, filename).map { |line| line.split(';') }.reduce(populations[year]) { |hash, line_split| hash.merge(line_split[0] => line_split[1].to_i) }
+def population_by_department(dep_deaths_couples)
+  dep_deaths_couples.reduce({}) do |hash, department_code_deaths|
+    hash.merge(department_code_deaths[0] => department_code_deaths[1])
   end
-  populations
 end
 
-
-def mean serie
-  return 0 if serie.empty?
-
-  serie.reduce(:+) / serie.count
+def load_populations
+  files_in_dir(POPULATION_DATABASE_PATH)
+      .map { |filename| [filename[/\d+/], lines_in_file(POPULATION_DATABASE_PATH, filename)] }
+      .map { |year, lines| [year.to_i, lines.map { |line| line.split(';') }] }
+      .reduce({}) { |hash, year_dep_deaths| hash.merge(year_dep_deaths[0] => population_by_department(year_dep_deaths[1])) }
 end
 
-def standard_deviation(serie)
-  return 0 if serie.count < 2
+def mean(series)
+  return 0 if series.empty?
 
-  mean = mean(serie)
-  Math.sqrt(serie.inject(0) { |accum, i| accum + ((i - mean) ** 2) } / (serie.length - 1).to_f)
+  series.reduce(:+) / series.count
+end
+
+def standard_deviation(series)
+  return 0 if series.count < 2
+
+  mean = mean(series)
+  Math.sqrt(series.inject(0) { |accum, i| accum + ((i - mean) ** 2) } / (series.length - 1).to_f)
 end
 
 def to_date_nd_deaths(year, split)
