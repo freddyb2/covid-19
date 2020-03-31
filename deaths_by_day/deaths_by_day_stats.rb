@@ -53,17 +53,24 @@ def lines_in_file(*args)
   lines.split(CARRIAGE_UNIX)
 end
 
-def population_by_department(dep_deaths_couples)
-  dep_deaths_couples.reduce({}) do |hash, department_code_deaths|
-    hash.merge(department_code_deaths[0] => department_code_deaths[1])
-  end
+def accumulate_department_population(hash, department_code, nb_deaths)
+  hash.merge(department_code => nb_deaths)
+end
+
+def population_by_department(department_populations)
+  department_populations
+      .map { |line| line.split(';') }
+      .reduce({}) { |hash, department_population| accumulate_department_population(hash, *department_population) }
+end
+
+def accumulate_year_dep_population(hash, year, dep_deaths)
+  hash.merge(year => population_by_department(dep_deaths))
 end
 
 def load_populations
   files_in_dir(POPULATION_DATABASE_PATH)
-      .map { |filename| [filename[/\d+/], lines_in_file(POPULATION_DATABASE_PATH, filename)] }
-      .map { |year, lines| [year.to_i, lines.map { |line| line.split(';') }] }
-      .reduce({}) { |hash, year_dep_deaths| hash.merge(year_dep_deaths[0] => population_by_department(year_dep_deaths[1])) }
+      .map { |filename| [filename[/\d+/].to_i, lines_in_file(POPULATION_DATABASE_PATH, filename)] }
+      .reduce({}) { |hash, year_dep_population| accumulate_year_dep_population(hash, *year_dep_population) }
 end
 
 def mean(series)
@@ -79,17 +86,14 @@ def standard_deviation(series)
   Math.sqrt(series.inject(0) { |accum, i| accum + ((i - mean) ** 2) } / (series.length - 1).to_f)
 end
 
-def to_date_nd_deaths(year, split)
+def year_yday_deaths(year, day, nb_deaths_s)
   begin
-    day = split[0]
     date = Date.new(year, day[0..1].to_i, day[2..3].to_i)
-    nb_deaths = split[1].to_i
-    [year, date.yday, nb_deaths]
+    [year, date.yday, nb_deaths_s.to_i]
   rescue
     nil
   end
 end
-
 
 POPULATIONS = load_populations.freeze
 
@@ -104,21 +108,25 @@ STATS_DIR = 'stats'
 `rm -rf #{STATS_DIR}`
 `mkdir #{STATS_DIR}`
 
+def accumulate_day_death_rate(hash, department_code, year, day, nb_deaths)
+  hash.merge(day => hash[day].push(nb_deaths * 100000 / POPULATIONS[year][department_code].to_f))
+end
+
+def day_deaths_couples(department_code, year)
+  lines_in_file(DEATHS_DATABASE_PATH, year.to_s, department_code)
+      .map { |line| year_yday_deaths(year, *line.split(';')) }
+      .compact
+end
+
 DEPARTMENTS_CODES.map do |department_code|
   File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
-    YEARS.map do |year|
-      lines_in_file(DEATHS_DATABASE_PATH, year.to_s, department_code)
-          .map { |line| line.split(';') }
-          .map { |split| to_date_nd_deaths(year, split) }
-          .compact
-    end.flatten(1)
-        .reduce(Hash.new { [] }) do |hash, year_day_deaths|
-      year = year_day_deaths[0]
-      day = year_day_deaths[1]
-      nb_deaths = year_day_deaths[2]
-      death_by_pop = nb_deaths * 100000 / POPULATIONS[year][department_code].to_f
-      hash.merge(day => hash[day].push(death_by_pop))
-    end.map(&method(:format_serie)).compact.each { |data| output_file.puts data.join(';') }
+    YEARS
+        .map { |year| day_deaths_couples(department_code, year) }
+        .flatten(1)
+        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
+        .map(&method(:format_serie))
+        .compact
+        .each { |data| output_file.puts data.join(';') }
   end
 end
 
