@@ -18,54 +18,64 @@ DEPARTMENTS_CODES = [
 ].flatten.freeze
 
 require 'roo'
-
+require 'date'
 
 class Death2020
-  def dematerialized_deaths(dep_code, day)
-    deaths_on_day(dep_code, COLUMN_DEMATERIALIZED_DEATHS_2020, day)
+  def dematerialized_deaths(dep_code, yday)
+    deaths_on_day(dep_code, COLUMN_DEMATERIALIZED_DEATHS_2020, yday)
   end
 
   def total_deaths(dep_code, day)
     deaths_on_day(dep_code, COLUMN_TOTAL_DEATHS_2020, day)
   end
 
+  def available_ydays
+    @workbooks.keys.map(&:to_a).reduce(:+).flatten.sort
+  end
+
   private
 
   COLUMN_DEMATERIALIZED_DEATHS_2020 = 2
   COLUMN_TOTAL_DEATHS_2020 = 3
-  FIRST_DAY_ROW_INDEX = 3
+  FIRST_DAY_ROW_INDEX = 4
+  FILES = [
+      { file: 'deaths_march_2020/2020-03-27_deces_quotidiens_departement.xlsx', days: 61..90 }
+  ]
 
-  def cumulated_deaths(column, day, dep_code)
-    department_sheet(dep_code).column(column)[day + FIRST_DAY_ROW_INDEX].to_i
+  def cumulated_deaths(column, yday, dep_code)
+    department_sheet(dep_code, yday).column(column)[yday - day_range(yday).first + FIRST_DAY_ROW_INDEX].to_i
   end
 
-  def death_cumulated_before(column, day, dep_code)
-    day == 1 ? 0 : cumulated_deaths(column, day - 1, dep_code)
+  def death_cumulated_before(column, yday, dep_code)
+    yday == day_range(yday).first ? 0 : cumulated_deaths(column, yday - 1, dep_code)
   end
 
-  def deaths_on_day(dep_code, column, day)
-    [cumulated_deaths(column, day, dep_code) - death_cumulated_before(column, day, dep_code), 0].max
+  def deaths_on_day(dep_code, column, yday)
+    [cumulated_deaths(column, yday, dep_code) - death_cumulated_before(column, yday, dep_code), 0].max
   end
 
-  def department_sheet(dep_code)
-    @workbook.sheet(dep_code)
+  def department_sheet(dep_code, yday)
+    @workbooks[day_range(yday)].sheet(dep_code)
   end
 
-  def initialize(file)
-    @workbook = Roo::Excelx.new(file)
+  def day_range(yday)
+    @workbooks.keys.detect { |days| days.include? yday }
+  end
+
+  def initialize
+    @workbooks = FILES.map { |entry| [entry[:days], Roo::Excelx.new(entry[:file])] }.to_h
   end
 end
 
 def demo
-  xlsx = Death2020.new 'deaths_march_2020/2020-03-27_deces_quotidiens_departement.xlsx'
+  death2020 = Death2020.new
   DEPARTMENTS_CODES.each do |dep_code|
     puts "DEPARTMENT #{dep_code}"
-    (1..30)
-        .to_a
-        .map { |day| [Date.new(2020, 3, day).yday, xlsx.dematerialized_deaths(dep_code, day), xlsx.total_deaths(dep_code, day)] }
-        .each { |info| puts info.join(' | ') }
+    death2020.available_ydays
+             .map { |yday| [yday, death2020.dematerialized_deaths(dep_code, yday), death2020.total_deaths(dep_code, yday)] }
+             .each { |info| puts info.join(' | ') }
     exit
   end
 end
 
-# demo
+demo
