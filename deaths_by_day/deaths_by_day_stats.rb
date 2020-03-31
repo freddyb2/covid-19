@@ -120,6 +120,8 @@ end
 
 DEPARTMENTS_CODES.map do |department_code|
   File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
+    output_file.puts "POPULATION_2019;#{POPULATIONS[2019][department_code]}"
+    output_file.puts "day;mean;standard_deviation"
     YEARS
         .map { |year| day_deaths_couples(department_code, year) }
         .flatten(1)
@@ -130,5 +132,4 @@ DEPARTMENTS_CODES.map do |department_code|
   end
 end
 
-# puts deaths_by_day
 
