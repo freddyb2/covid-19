@@ -54,7 +54,7 @@ def lines_in_file(*args)
 end
 
 def accumulate_department_population(hash, department_code, nb_deaths)
-  hash.merge(department_code => nb_deaths)
+  hash.merge(department_code => nb_deaths.to_i)
 end
 
 def population_by_department(department_populations)
@@ -118,19 +118,33 @@ def day_deaths_couples(department_code, year)
       .compact
 end
 
+load 'analysis_deaths_march.rb'
+DEATHS_2020 = Death2020.new
+
+def deaths_for_100000_in_2019(deaths, department_code)
+  (deaths * 100_000) / POPULATIONS[2019][department_code]
+end
+
+def deaths_2020_dematerialized_total(yday, department_code)
+  [DEATHS_2020.dematerialized_deaths(department_code, yday), DEATHS_2020.total_deaths(department_code, yday)]
+      .map { |deaths| deaths_for_100000_in_2019(deaths, department_code) }
+end
+
 DEPARTMENTS_CODES.map do |department_code|
   File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
-    output_file.puts "POPULATION_2019;#{POPULATIONS[2019][department_code]}"
-    output_file.puts "day;mean;standard_deviation"
+    output_file.puts "day;mean;standard_deviation;dematerialized_deaths;total_deaths"
     YEARS
         .map { |year| day_deaths_couples(department_code, year) }
         .flatten(1)
         .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
         .map(&method(:format_serie))
         .compact
-        .sort { |a, b| a[0] <=> b[0] }
+        .sort { |a, b| a[0] <=> b[0] } # a[0] and b[0] are year days (1..365)
+        .select { |data| DEATHS_2020.available_ydays.include? data[0] } # data[0] is a year day (1..365)
+        .map { |data| data + deaths_2020_dematerialized_total(data[0], department_code) }
         .each { |data| output_file.puts data.join(';') }
   end
+  puts "department done: #{department_code}"
 end
 
 
