@@ -122,7 +122,7 @@ load 'analysis_deaths_march.rb'
 DEATHS_2020 = Death2020.new
 
 def deaths_for_100000_in_2019(deaths, department_code)
-  (deaths * 100_000) / POPULATIONS[2019][department_code]
+  (deaths * 100_000) / POPULATIONS[2019][department_code].to_f
 end
 
 def deaths_2020_dematerialized_total(yday, department_code)
@@ -132,7 +132,7 @@ end
 
 DEPARTMENTS_CODES.map do |department_code|
   File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
-    output_file.puts "day;mean;standard_deviation;dematerialized_deaths;total_deaths"
+    output_file.puts "day;mean;standard_deviation;dematerialized_deaths_2020;total_deaths_2020"
     YEARS
         .map { |year| day_deaths_couples(department_code, year) }
         .flatten(1)
