@@ -8,7 +8,7 @@ database_dir = 'database'
 `rm -rf #{database_dir}`
 `mkdir #{database_dir}`
 
-def replace_CR_to_unix(string)
+def replace_cr_to_unix(string)
   string.gsub!(/\r\n?/, CARRIAGE_UNIX)
 end
 
@@ -22,12 +22,12 @@ files = `ls #{csv_dir}`
 files.gsub!(/\r\n?/, CARRIAGE_UNIX)
 files.each_line do |file|
   filename = file
-  replace_CR_to_unix filename
+  replace_cr_to_unix filename
   remove_carriage filename
   puts "#{filename}..."
   filepath = File.join(csv_dir, filename)
   lines = File.open(filepath).read
-  replace_CR_to_unix(lines)
+  replace_cr_to_unix(lines)
   database = lines.split(CARRIAGE_UNIX)
                  .map { |line| line.split(';') }
                  .reject { |elements| elements[3].to_i == 0 }
