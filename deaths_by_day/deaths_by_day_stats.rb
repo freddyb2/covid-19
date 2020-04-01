@@ -165,8 +165,8 @@ DEPARTMENTS_CODES.map do |department_code|
                .map(&method(:analyse_series))
                .compact
                .sort { |a, b| a[:day] <=> b[:day] }
-               .select { |data| DEATHS_2020.available_ydays.include? data[:day] }
-               .map { |data| data.merge(deaths_2020(data[:day], department_code)) }
+               .select { |datum| DEATHS_2020.available_ydays.include? datum[:day] }
+               .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
 
     puts(([department_code] + OVER_MORTALITY_CRITERIAS.map { |criteria, day_max, day_min| over_mortality(data, criteria, day_max, day_min) }).join(';'))
 
