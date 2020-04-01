@@ -97,11 +97,15 @@ end
 
 POPULATIONS = load_populations.freeze
 
-def format_serie(day, series)
+def analyse_series(day, series)
   return nil if day > 365
   raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (YEARS.count * 2) / 3 || series.count > YEARS.count
 
-  [day, mean(series), standard_deviation(series)]
+  {
+      day: day,
+      mean: mean(series),
+      standard_deviation: standard_deviation(series)
+  }
 end
 
 STATS_DIR = 'stats'
@@ -125,9 +129,15 @@ def deaths_for_100000_in_2019(deaths, department_code)
   (deaths * 100_000) / POPULATIONS[2019][department_code].to_f
 end
 
-def deaths_2020_dematerialized_total(yday, department_code)
-  [DEATHS_2020.dematerialized_deaths(department_code, yday), DEATHS_2020.total_deaths(department_code, yday)]
-      .map { |deaths| deaths_for_100000_in_2019(deaths, department_code) }
+def deaths_2020(yday, department_code)
+  {
+      dematerialized_deaths_2020: DEATHS_2020.dematerialized_deaths(department_code, yday),
+      total_deaths_2020: DEATHS_2020.total_deaths(department_code, yday)
+  }.map { |key, deaths| [key, deaths_for_100000_in_2019(deaths, department_code)] }.to_h
+end
+
+def format_data(data)
+  %i[day mean standard_deviation dematerialized_deaths_2020 total_deaths_2020].map { |key| data[key] }
 end
 
 DEPARTMENTS_CODES.map do |department_code|
@@ -137,11 +147,12 @@ DEPARTMENTS_CODES.map do |department_code|
         .map { |year| day_deaths_couples(department_code, year) }
         .flatten(1)
         .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
-        .map(&method(:format_serie))
+        .map(&method(:analyse_series))
         .compact
-        .sort { |a, b| a[0] <=> b[0] } # a[0] and b[0] are year days (1..365)
-        .select { |data| DEATHS_2020.available_ydays.include? data[0] } # data[0] is a year day (1..365)
-        .map { |data| data + deaths_2020_dematerialized_total(data[0], department_code) }
+        .sort { |a, b| a[:day] <=> b[:day] } # a[0] and b[0] are year days (1..365)
+        .select { |data| DEATHS_2020.available_ydays.include? data[:day] } # data[0] is a year day (1..365)
+        .map { |data| data.merge(deaths_2020(data[:day], department_code)) }
+        .map(&method(:format_data))
         .each { |data| output_file.puts data.join(';') }
   end
   puts "department done: #{department_code}"
