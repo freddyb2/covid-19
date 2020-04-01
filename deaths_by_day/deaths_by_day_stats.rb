@@ -140,22 +140,39 @@ def format_data(data)
   %i[day mean standard_deviation dematerialized_deaths_2020 total_deaths_2020].map { |key| data[key] }
 end
 
+
+CRITERIAS_DAYS_MAX = [
+    [:total_deaths_2020, 76, 76 - 7],
+    [:total_deaths_2020, 76, DEATHS_2020.available_ydays.first],
+    [:dematerialized_deaths_2020, 76, DEATHS_2020.available_ydays.first],
+    [:dematerialized_deaths_2020, 80, DEATHS_2020.available_ydays.first],
+].freeze
+puts((["department"] + CRITERIAS_DAYS_MAX.map { |criteria, day_max, day_min| "#{criteria}_day_#{day_min}_to_#{day_max}" }).join(';'))
 DEPARTMENTS_CODES.map do |department_code|
   File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
     output_file.puts "day;mean;standard_deviation;dematerialized_deaths_2020;total_deaths_2020"
-    YEARS
-        .map { |year| day_deaths_couples(department_code, year) }
-        .flatten(1)
-        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
-        .map(&method(:analyse_series))
-        .compact
-        .sort { |a, b| a[:day] <=> b[:day] } # a[0] and b[0] are year days (1..365)
-        .select { |data| DEATHS_2020.available_ydays.include? data[:day] } # data[0] is a year day (1..365)
-        .map { |data| data.merge(deaths_2020(data[:day], department_code)) }
+    data = YEARS
+               .map { |year| day_deaths_couples(department_code, year) }
+               .flatten(1)
+               .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
+               .map(&method(:analyse_series))
+               .compact
+               .sort { |a, b| a[:day] <=> b[:day] } # a[0] and b[0] are year days (1..365)
+               .select { |data| DEATHS_2020.available_ydays.include? data[:day] } # data[0] is a year day (1..365)
+               .map { |data| data.merge(deaths_2020(data[:day], department_code)) }
+
+
+    rates_2020 = CRITERIAS_DAYS_MAX.map do |criteria, day_max, day_min|
+      selected_data = data.select { |line| line[criteria] > 0 && line[:day] <= day_max && line[:day] >= day_min }
+      mean, deaths2020 = selected_data.reduce([0, 0]) { |acc, line| [acc[0] + line[:mean], acc[1] + line[criteria]] }
+      (deaths2020 / mean - 1)
+    end
+    puts(([department_code] + rates_2020).join(';'))
+
+    data
         .map(&method(:format_data))
         .each { |data| output_file.puts data.join(';') }
   end
-  puts "department done: #{department_code}"
 end
 
 
