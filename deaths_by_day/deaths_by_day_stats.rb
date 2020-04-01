@@ -164,8 +164,8 @@ DEPARTMENTS_CODES.map do |department_code|
                .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
                .map(&method(:analyse_series))
                .compact
-               .sort { |a, b| a[:day] <=> b[:day] } # a[0] and b[0] are year days (1..365)
-               .select { |data| DEATHS_2020.available_ydays.include? data[:day] } # data[0] is a year day (1..365)
+               .sort { |a, b| a[:day] <=> b[:day] }
+               .select { |data| DEATHS_2020.available_ydays.include? data[:day] }
                .map { |data| data.merge(deaths_2020(data[:day], department_code)) }
 
     puts(([department_code] + OVER_MORTALITY_CRITERIAS.map { |criteria, day_max, day_min| over_mortality(data, criteria, day_max, day_min) }).join(';'))
