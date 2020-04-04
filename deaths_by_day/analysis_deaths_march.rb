@@ -66,13 +66,13 @@ class Death2020
   end
 
   def available_ydays
-    FILES.map(&:available_ydays).reduce(:+).flatten.sort
+    @available_ydays ||= FILES.map(&:available_ydays).reduce(:+).flatten.sort
   end
 
   private
 
   FILES = [
-      InseeExcelFile.new('../deaths_2020/2020-03-27_deces_quotidiens_departement.xlsx', 61..90)
+      InseeExcelFile.new('../deaths_2020/2020-04-03_deces_quotidiens_departement.xlsx', 61..90)
   ].freeze
 
   def daily_death(yday)

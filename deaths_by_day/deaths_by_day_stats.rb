@@ -15,9 +15,7 @@ STATS_DIR = 'stats'
 `rm -rf #{STATS_DIR}`
 `mkdir #{STATS_DIR}`
 
-DEATHS_2020 = Death2020.new
 YDAYS = (1..365).to_a.freeze
-YEARS = (1995..2019).to_a.freeze
 
 def generate_dep_codes(first_digit, last_digits)
   last_digits.map { |last_digit| "#{first_digit}#{last_digit}" }
@@ -25,7 +23,7 @@ end
 
 DEPARTMENTS_CODES = [
     generate_dep_codes('0', (1..9).to_a),
-    generate_dep_codes('1', (0..9).to_a),
+    generate_dep_codes('1', (1..2).to_a + (4..9).to_a),
     generate_dep_codes('2', %w[A B] + (1..9).to_a),
     generate_dep_codes('3', (0..9).to_a),
     generate_dep_codes('4', (0..9).to_a),
@@ -35,14 +33,6 @@ DEPARTMENTS_CODES = [
     generate_dep_codes('8', (0..9).to_a),
     generate_dep_codes('9', (1..5).to_a),
 ].flatten.freeze
-
-OUTPUT_FILE_DATA_FIELDS = %i[day mean standard_deviation dematerialized_deaths_2020 total_deaths_2020]
-OVER_MORTALITY_CRITERIAS = [
-    [:total_deaths_2020, 76, 76 - 7],
-    [:total_deaths_2020, 76, DEATHS_2020.available_ydays.first],
-    [:dematerialized_deaths_2020, 76, DEATHS_2020.available_ydays.first],
-    [:dematerialized_deaths_2020, 80, DEATHS_2020.available_ydays.first],
-].freeze
 
 def replace_cr_to_unix(string)
   string.gsub!(/\r\n?/, CARRIAGE_UNIX)
@@ -105,9 +95,9 @@ def year_yday_deaths(year, day, nb_deaths_s)
   end
 end
 
-def analyse_series(day, series)
+def analyse_series(day, series, years_reference)
   return nil if day > 365
-  raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (YEARS.count * 2) / 3 || series.count > YEARS.count
+  raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (years_reference.count * 1) / 2 || series.count > years_reference.count
 
   {
       day: day,
@@ -137,31 +127,52 @@ def deaths_2020(yday, department_code)
   }.map { |key, deaths| [key, deaths_for_100000_in_2019(deaths, department_code)] }.to_h
 end
 
-def over_mortality(daily_data, criteria, day_max, day_min)
-  selected_data = daily_data.select { |line| line[criteria] > 0 && line[:day] <= day_max && line[:day] >= day_min }
-  mean, deaths2020 = selected_data.reduce([0, 0]) { |acc, line| [acc[0] + line[:mean], acc[1] + line[criteria]] }
+def over_mortality(daily_data, day_max, day_min)
+  selected_data = daily_data.select do |line|
+    line[:total_deaths_2020] > 0 &&
+        line[:day] <= day_max &&
+        line[:day] >= day_min
+  end
+  mean, deaths2020 = selected_data.reduce([0, 0]) { |acc, line| [acc[0] + line[:mean], acc[1] + line[:total_deaths_2020]] }
   (deaths2020 / mean - 1)
 end
 
+OUTPUT_FILE_DATA_FIELDS = %i[day mean standard_deviation]
 POPULATIONS = load_populations.freeze
-puts((["department"] + OVER_MORTALITY_CRITERIAS.map { |criteria, day_max, day_min| "#{criteria}_day_#{day_min}_to_#{day_max}" }).join(CSV_SEPARATOR))
-DEPARTMENTS_CODES.map do |department_code|
-  File.open(File.join(STATS_DIR, "#{department_code}.csv"), 'w') do |output_file|
-    output_file.puts OUTPUT_FILE_DATA_FIELDS.join(CSV_SEPARATOR)
-    data = YEARS
-               .map { |year| day_deaths_couples(department_code, year) }
-               .flatten(1)
-               .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
-               .map(&method(:analyse_series))
-               .compact
-               .sort { |a, b| a[:day] <=> b[:day] }
-               .select { |datum| DEATHS_2020.available_ydays.include? datum[:day] }
-               .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
+YEARS = (1995..2019).to_a.freeze
+OVER_MORTALITY_CRITERIAS = [
+    [83, 7],
+    [83, 14],
+    [83, 21],
+].freeze
 
-    puts(([department_code] + OVER_MORTALITY_CRITERIAS.map { |criteria, day_max, day_min| over_mortality(data, criteria, day_max, day_min) }).join(CSV_SEPARATOR))
+DEATHS_2020 = Death2020.new
 
-    data
-        .map { |datum| OUTPUT_FILE_DATA_FIELDS.map { |key| datum[key] } }
-        .each { |datum| output_file.puts datum.join(CSV_SEPARATOR) }
-  end
+# Years available : 1995..2019
+YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
+
+def filepath(department_code, years_reference)
+  File.join(STATS_DIR, "#{department_code}_#{years_reference}.csv")
 end
+
+puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIAS.map { |_| ref } }.flatten].join(CSV_SEPARATOR))
+puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))
+DEPARTMENTS_CODES.each do |department_code|
+  puts([
+           department_code,
+           YEARS_REFERENCES.map do |years_reference|
+             data = years_reference
+                        .to_a
+                        .map { |year| day_deaths_couples(department_code, year) }
+                        .flatten(1)
+                        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
+                        .select { |day, _| DEATHS_2020.available_ydays.include? day }
+                        .map { |day, series| analyse_series(day, series, years_reference) }
+                        .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
+                        .compact
+             OVER_MORTALITY_CRITERIAS.map { |day_max, period| over_mortality(data, day_max, day_max - period) }.flatten
+           end
+       ].join(CSV_SEPARATOR))
+end
+
+
