@@ -3,7 +3,7 @@
 
 require 'date'
 require 'io/console'
-load 'analysis_deaths_march.rb'
+load 'insee_daily_deaths.rb'
 
 CARRIAGE_UNIX = "\n"
 CSV_SEPARATOR = ';'
