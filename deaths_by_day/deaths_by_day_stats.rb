@@ -82,55 +82,61 @@ def standard_deviation(series)
   Math.sqrt(series.inject(0) { |accum, i| accum + ((i - mean) ** 2) } / (series.length - 1).to_f)
 end
 
-def year_yday_deaths(year, day, nb_deaths_s)
+def date_nb_deaths(year, day, nb_deaths_s)
   begin
-    date = Date.new(year, day[0..1].to_i, day[2..3].to_i)
-    [year, date.yday, nb_deaths_s.to_i]
+    {
+        year: year,
+        yday: Date.new(year, day[0..1].to_i, day[2..3].to_i).yday,
+        nb_deaths: nb_deaths_s.to_i,
+    }
   rescue
     nil
   end
 end
 
 def analyse_series(day, series, years_reference)
-  return nil if day > 365
   raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (years_reference.count * 1) / 2 || series.count > years_reference.count
 
   {
       day: day,
-      mean: mean(series),
-      standard_deviation: standard_deviation(series)
+      mean_death_rate: mean(series),
+      standard_deviation_death_rate: standard_deviation(series)
   }
 end
 
-def accumulate_day_death_rate(hash, department_code, year, day, nb_deaths)
-  hash.merge(day => hash[day].push(nb_deaths * 100000 / POPULATIONS[year][department_code].to_f))
+def death_rate(nb_deaths, year, department_code)
+  nb_deaths * 100_000 / POPULATIONS[year][department_code].to_f
 end
 
-def day_deaths_couples(department_code, year)
+def accumulate_day_death_rate(hash, department_code, daily_nb_deaths)
+  hash.merge(
+      daily_nb_deaths[:yday] => hash[daily_nb_deaths[:yday]]
+                                    .push(death_rate(daily_nb_deaths[:nb_deaths], daily_nb_deaths[:year], department_code))
+  )
+end
+
+def daily_nb_deaths(department_code, year)
   lines_in_file(DEATHS_DATABASE_PATH, year.to_s, department_code)
-      .map { |line| year_yday_deaths(year, *line.split(CSV_SEPARATOR)) }
+      .map { |line| date_nb_deaths(year, *line.split(CSV_SEPARATOR)) }
       .compact
 end
 
-def deaths_for_100000_in_2019(deaths, department_code)
-  (deaths * 100_000) / POPULATIONS[2019][department_code].to_f
-end
-
 def deaths_2020(yday, department_code)
+  abs_deaths_total_deaths = DEATHS_2020.total_deaths(department_code, yday)
   {
-      dematerialized_deaths_2020: DEATHS_2020.dematerialized_deaths(department_code, yday),
-      total_deaths_2020: DEATHS_2020.total_deaths(department_code, yday)
-  }.map { |key, deaths| [key, deaths_for_100000_in_2019(deaths, department_code)] }.to_h
+      nb_deaths_2020: abs_deaths_total_deaths,
+      death_rate_2020: death_rate(abs_deaths_total_deaths, 2019, department_code),
+  }
 end
 
 def over_mortality(daily_data, day_max, day_min)
   selected_data = daily_data.select do |line|
-    line[:total_deaths_2020] > 0 &&
+    line[:death_rate_2020] > 0 &&
         line[:day] <= day_max &&
         line[:day] >= day_min
   end
-  mean, deaths2020 = selected_data.reduce([0, 0]) { |acc, line| [acc[0] + line[:mean], acc[1] + line[:total_deaths_2020]] }
-  (deaths2020 / mean - 1)
+  death_rate_mean, deaths_rate_2020 = selected_data.reduce([0, 0]) { |acc, line| [acc[0] + line[:mean_death_rate], acc[1] + line[:death_rate_2020]] }
+  (deaths_rate_2020 / death_rate_mean - 1)
 end
 
 OUTPUT_FILE_DATA_FIELDS = %i[day mean standard_deviation]
@@ -156,10 +162,11 @@ DEPARTMENTS_CODES.each do |department_code|
            YEARS_REFERENCES.map do |years_reference|
              data = years_reference
                         .to_a
-                        .map { |year| day_deaths_couples(department_code, year) }
+                        .map { |year| daily_nb_deaths(department_code, year) }
                         .flatten(1)
-                        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, *year_day_deaths) }
-                        .select { |day, _| DEATHS_2020.available_ydays.include? day }
+                        .select { |year_day_deaths| DEATHS_2020.available_ydays.include? year_day_deaths[:yday] }
+                        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, year_day_deaths) }
+                        .select { |yday, _| yday <= 365 }
                         .map { |day, series| analyse_series(day, series, years_reference) }
                         .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
                         .compact

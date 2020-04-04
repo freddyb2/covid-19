@@ -2,10 +2,6 @@ require 'roo'
 require 'date'
 
 module InseeDailyDeaths
-  def dematerialized_deaths(dep_code, yday)
-    raise 'not implemented'
-  end
-
   def total_deaths(dep_code, day)
     raise 'not implemented'
   end
@@ -18,10 +14,6 @@ end
 class InseeExcelFile
   include InseeDailyDeaths
 
-  def dematerialized_deaths(dep_code, yday)
-    deaths_on_day(dep_code, COLUMN_DEMATERIALIZED_DEATHS_2020, yday)
-  end
-
   def total_deaths(dep_code, day)
     deaths_on_day(dep_code, COLUMN_TOTAL_DEATHS_2020, day)
   end
@@ -32,7 +24,6 @@ class InseeExcelFile
 
   private
 
-  COLUMN_DEMATERIALIZED_DEATHS_2020 = 2
   COLUMN_TOTAL_DEATHS_2020 = 3
   FIRST_DAY_ROW_INDEX = 4
 
@@ -56,10 +47,6 @@ end
 
 class Death2020
   include InseeDailyDeaths
-
-  def dematerialized_deaths(dep_code, yday)
-    daily_death(yday).dematerialized_deaths(dep_code, yday)
-  end
 
   def total_deaths(dep_code, yday)
     daily_death(yday).total_deaths(dep_code, yday)
