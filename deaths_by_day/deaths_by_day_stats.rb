@@ -11,10 +11,6 @@ CSV_SEPARATOR = ';'
 POPULATION_DATABASE_PATH = '../population/database'
 DEATHS_DATABASE_PATH = '../personnes_decedees/database'
 
-STATS_DIR = 'stats'
-`rm -rf #{STATS_DIR}`
-`mkdir #{STATS_DIR}`
-
 YDAYS = (1..365).to_a.freeze
 
 def generate_dep_codes(first_digit, last_digits)
@@ -151,9 +147,6 @@ DEATHS_2020 = Death2020.new
 # Years available : 1995..2019
 YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
 
-def filepath(department_code, years_reference)
-  File.join(STATS_DIR, "#{department_code}_#{years_reference}.csv")
-end
 
 puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIAS.map { |_| ref } }.flatten].join(CSV_SEPARATOR))
 puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))
