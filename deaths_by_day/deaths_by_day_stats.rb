@@ -152,7 +152,10 @@ DEATHS_2020 = Death2020.new
 
 # Years available : 1995..2019
 YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
-
+DAILY_NB_DEATHS = YEARS_REFERENCES.map { |years| years.to_a }
+                                  .flatten
+                                  .uniq
+                                  .map { |year| [year, DEPARTMENTS_CODES.map { |department_code| [department_code, daily_nb_deaths(department_code, year)]}.to_h] }.to_h
 
 puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIAS.map { |_| ref } }.flatten].join(CSV_SEPARATOR))
 puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))
@@ -162,7 +165,7 @@ DEPARTMENTS_CODES.each do |department_code|
            YEARS_REFERENCES.map do |years_reference|
              data = years_reference
                         .to_a
-                        .map { |year| daily_nb_deaths(department_code, year) }
+                        .map { |year| DAILY_NB_DEATHS[year][department_code] }
                         .flatten(1)
                         .select { |year_day_deaths| DEATHS_2020.available_ydays.include? year_day_deaths[:yday] }
                         .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, year_day_deaths) }
