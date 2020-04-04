@@ -139,24 +139,21 @@ def over_mortality(daily_data, day_max, day_min)
   (deaths_rate_2020 / death_rate_mean - 1)
 end
 
-OUTPUT_FILE_DATA_FIELDS = %i[day mean standard_deviation]
 POPULATIONS = load_populations.freeze
-YEARS = (1995..2019).to_a.freeze
+DEATHS_2020 = Death2020.new
+DAILY_NB_DEATHS = (1995..2019).to_a
+                              .flatten
+                              .uniq
+                              .map { |year| [year, DEPARTMENTS_CODES.map { |department_code| [department_code, daily_nb_deaths(department_code, year)] }.to_h] }.to_h
+
+
+# OVERMORTALITY BY DEPARTMENT
+YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
 OVER_MORTALITY_CRITERIAS = [
     [83, 7],
     [83, 14],
     [83, 21],
 ].freeze
-
-DEATHS_2020 = Death2020.new
-
-# Years available : 1995..2019
-YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
-DAILY_NB_DEATHS = YEARS_REFERENCES.map { |years| years.to_a }
-                                  .flatten
-                                  .uniq
-                                  .map { |year| [year, DEPARTMENTS_CODES.map { |department_code| [department_code, daily_nb_deaths(department_code, year)]}.to_h] }.to_h
-
 puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIAS.map { |_| ref } }.flatten].join(CSV_SEPARATOR))
 puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))
 DEPARTMENTS_CODES.each do |department_code|
