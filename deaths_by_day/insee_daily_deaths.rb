@@ -49,7 +49,7 @@ class Death2020
   include InseeDailyDeaths
 
   def total_deaths(dep_code, yday)
-    daily_death(yday).total_deaths(dep_code, yday)
+    daily_death(yday)&.total_deaths(dep_code, yday) || 0
   end
 
   def available_ydays

@@ -95,6 +95,7 @@ def date_nb_deaths(year, day, nb_deaths_s)
 end
 
 def analyse_series(day, series, years_reference)
+  puts day, series, years_reference
   raise "Error not enough elements in series (day #{day} - series.count = #{series.count})" if series.count < (years_reference.count * 1) / 2 || series.count > years_reference.count
 
   {
@@ -104,11 +105,15 @@ def analyse_series(day, series, years_reference)
   }
 end
 
+ONE_HUNDRED_THOUSAND = 100_000
+
 def death_rate(nb_deaths, year, department_code)
-  nb_deaths * 100_000 / POPULATIONS[year][department_code].to_f
+  nb_deaths * ONE_HUNDRED_THOUSAND / POPULATIONS[year][department_code].to_f
 end
 
 def accumulate_day_death_rate(hash, department_code, daily_nb_deaths)
+  puts "department_code", department_code
+  puts "daily_nb_deaths", daily_nb_deaths
   hash.merge(
       daily_nb_deaths[:yday] => hash[daily_nb_deaths[:yday]]
                                     .push(death_rate(daily_nb_deaths[:nb_deaths], daily_nb_deaths[:year], department_code))
@@ -125,7 +130,7 @@ def deaths_2020(yday, department_code)
   abs_deaths_total_deaths = DEATHS_2020.total_deaths(department_code, yday)
   {
       nb_deaths_2020: abs_deaths_total_deaths,
-      death_rate_2020: death_rate(abs_deaths_total_deaths, 2019, department_code),
+      death_rate_2020: death_rate(abs_deaths_total_deaths, 2020, department_code),
   }
 end
 
@@ -145,7 +150,24 @@ DAILY_NB_DEATHS = (1995..2019).to_a
                               .flatten
                               .uniq
                               .map { |year| [year, DEPARTMENTS_CODES.map { |department_code| [department_code, daily_nb_deaths(department_code, year)] }.to_h] }.to_h
+DEATHS_HOSPITAL_COVID = lines_in_file('data_sante_publique_france_2020', 'deces_covid_hosp_france.csv')
+                            .map { |line| line.split(',') }
+                            .map { |split| [split[1].to_i, split[2]] }
+                            .to_h
+POPULATION_FR_SAUF_13 = 62_863_485.to_f # Métropole (sauf 13)
+ONE_MILLION = 1_000_000
+(61..95).each do |yday|
 
+  deaths_2020_france = DEATHS_2020.total_deaths('France sauf 13', yday)
+  theorical_deaths = mean((2019..2019).to_a.map do |year|
+    nb_deaths_in_france = DEPARTMENTS_CODES.map { |department_code| DAILY_NB_DEATHS[year][department_code].flatten(1).detect { |year_day_deaths| year_day_deaths[:yday] == yday } }.compact.map { |d| d[:nb_deaths] }.reduce(:+)
+    population_in_france = DEPARTMENTS_CODES.map { |department_code| POPULATIONS[year][department_code] }.reduce(:+).to_f
+    (nb_deaths_in_france * POPULATION_FR_SAUF_13) / population_in_france
+  end)
+  puts [yday, deaths_2020_france, theorical_deaths.to_i, DEATHS_HOSPITAL_COVID[yday]].join(';')
+end
+
+exit
 
 # OVERMORTALITY BY DEPARTMENT
 YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
@@ -158,21 +180,20 @@ puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIA
 puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))
 DEPARTMENTS_CODES.each do |department_code|
   puts([
-           department_code,
-           YEARS_REFERENCES.map do |years_reference|
-             data = years_reference
-                        .to_a
-                        .map { |year| DAILY_NB_DEATHS[year][department_code] }
-                        .flatten(1)
-                        .select { |year_day_deaths| DEATHS_2020.available_ydays.include? year_day_deaths[:yday] }
-                        .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, year_day_deaths) }
-                        .select { |yday, _| yday <= 365 }
-                        .map { |day, series| analyse_series(day, series, years_reference) }
-                        .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
-                        .compact
-             OVER_MORTALITY_CRITERIAS.map { |day_max, period| over_mortality(data, day_max, day_max - period) }.flatten
-           end
-       ].join(CSV_SEPARATOR))
+      department_code,
+      YEARS_REFERENCES.map do |years_reference|
+        data = years_reference
+                   .to_a
+                   .map { |year| DAILY_NB_DEATHS[year][department_code] }
+                   .flatten(1)
+                   .select { |year_day_deaths| DEATHS_2020.available_ydays.include? year_day_deaths[:yday] }
+                   .reduce(Hash.new { [] }) { |hash, year_day_deaths| accumulate_day_death_rate(hash, department_code, year_day_deaths) }
+                   .map { |day, series| analyse_series(day, series, years_reference) }
+                   .map { |datum| datum.merge(deaths_2020(datum[:day], department_code)) }
+                   .compact
+        OVER_MORTALITY_CRITERIAS.map { |day_max, period| over_mortality(data, day_max, day_max - period) }.flatten
+      end
+  ].join(CSV_SEPARATOR))
 end
 
 
