@@ -20,7 +20,7 @@ end
 DEPARTMENTS_CODES = [
     generate_dep_codes('0', (1..9).to_a),
     generate_dep_codes('1', (1..9).to_a),
-    generate_dep_codes('2', %w[A B] + (1..9).to_a),
+    generate_dep_codes('2', %w[A B] + (1..2).to_a + (4..9).to_a),
     generate_dep_codes('3', (0..9).to_a),
     generate_dep_codes('4', (0..9).to_a),
     generate_dep_codes('5', (0..9).to_a),
@@ -154,10 +154,10 @@ DEATHS_HOSPITAL_COVID = lines_in_file('data_sante_publique_france_2020', 'deces_
                             .map { |line| line.split(',') }
                             .map { |split| [split[1].to_i, split[2]] }
                             .to_h
-POPULATION_FR_METRO = (POPULATIONS[2020].select { |dep, _| dep.to_i <= 95 }.map { |_, pop| pop }.reduce(:+)).to_f # Métropole
+POPULATION_FR_METRO = (POPULATIONS[2020].select { |dep, _| DEPARTMENTS_CODES.include? dep }.map { |_, pop| pop }.reduce(:+)).to_f # Métropole
 ONE_MILLION = 1_000_000
-(61..95).each do |yday|
-  deaths_2020_france = DEATHS_2020.total_deaths('France', yday)
+(61..DEATHS_2020.available_ydays.max).each do |yday|
+  deaths_2020_france = DEPARTMENTS_CODES.map { |department_code| DEATHS_2020.total_deaths(department_code, yday) }.reduce(:+)
   theorical_deaths = mean((1999..2019).to_a.map do |year|
     nb_deaths_in_france = DEPARTMENTS_CODES.map { |department_code| DAILY_NB_DEATHS[year][department_code].flatten(1).detect { |year_day_deaths| year_day_deaths[:yday] == yday } }.compact.map { |d| d[:nb_deaths] }.reduce(:+)
     population_in_france = DEPARTMENTS_CODES.map { |department_code| POPULATIONS[year][department_code] }.reduce(:+).to_f
@@ -172,10 +172,11 @@ exit
 # OVERMORTALITY BY DEPARTMENT
 YEARS_REFERENCES = [2015..2019, 2009..2019, 1999..2019]
 OVER_MORTALITY_CRITERIAS = [
-    [90, 7],
-    [90, 14],
-    [90, 21],
-    [90, 28],
+    [97, 7],
+    [97, 14],
+    [97, 21],
+    [97, 28],
+    [97, 35],
 ].freeze
 puts([['reference_years'] + YEARS_REFERENCES.map { |ref| OVER_MORTALITY_CRITERIAS.map { |_| ref } }.flatten].join(CSV_SEPARATOR))
 puts([['department'] + YEARS_REFERENCES.map { |_| OVER_MORTALITY_CRITERIAS.map { |day_max, period| "day_#{day_max - period}_to_#{day_max}" } }.flatten].join(CSV_SEPARATOR))

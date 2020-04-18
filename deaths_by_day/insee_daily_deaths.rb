@@ -1,6 +1,8 @@
 require 'roo'
 require 'date'
 
+CARRIAGE_UNIX = "\n"
+
 module InseeDailyDeaths
   def total_deaths(dep_code, day)
     raise 'not implemented'
@@ -11,58 +13,52 @@ module InseeDailyDeaths
   end
 end
 
-class InseeExcelFile
-  include InseeDailyDeaths
+def replace_cr_to_unix(string)
+  string.gsub!(/\r\n?/, CARRIAGE_UNIX)
+end
 
-  def total_deaths(dep_code, day)
-    deaths_on_day(dep_code, COLUMN_TOTAL_DEATHS_2020, day)
-  end
+def remove_carriage(string)
+  string.gsub!(CARRIAGE_UNIX, '')
+end
 
-  def available_ydays
-    @day_range.to_a
-  end
+def extract_data(split)
+  return if split[0].to_i < 2020 || split[9].to_i > 95
+  {
+    yday: Date.new(split[0].to_i, split[1].to_i, split[2].to_i).yday,
+    dep_code: split[9]
+  }
+end
 
-  private
+def reduce_by_yday_dep(data, hash)
+  yday = data[:yday]
+  dep_code = data[:dep_code]
+  hash.merge(yday => hash[yday].merge(dep_code => hash[yday][dep_code] + 1))
+end
 
-  COLUMN_TOTAL_DEATHS_2020 = 3
-  FIRST_DAY_ROW_INDEX = 4
-
-  def cumulated_deaths(column, yday, dep_code)
-    @workbook.sheet(dep_code).column(column)[yday - @day_range.first + FIRST_DAY_ROW_INDEX].to_i
-  end
-
-  def death_cumulated_before(column, yday, dep_code)
-    yday == @day_range.first ? 0 : cumulated_deaths(column, yday - 1, dep_code)
-  end
-
-  def deaths_on_day(dep_code, column, yday)
-    [cumulated_deaths(column, yday, dep_code) - death_cumulated_before(column, yday, dep_code), 0].max
-  end
-
-  def initialize(file, day_range)
-    @workbook = Roo::Excelx.new(file)
-    @day_range = day_range
-  end
+def load_data
+  filename = 'DC_Jan-Avr_2018-2020_det.csv'
+  lines = File.open(filename).read
+  replace_cr_to_unix(lines)
+  lines.split(CARRIAGE_UNIX)
+    .map { |line| extract_data line.split(';') }
+    .compact
+    .reduce(Hash.new { (Hash.new 0) }) { |hash, data| reduce_by_yday_dep(data, hash) }
 end
 
 class Death2020
   include InseeDailyDeaths
 
   def total_deaths(dep_code, yday)
-    daily_death(yday)&.total_deaths(dep_code, yday) || 0
+    @data[yday][dep_code]
   end
 
   def available_ydays
-    @available_ydays ||= FILES.map(&:available_ydays).reduce(:+).flatten.sort
+    @data.keys
   end
 
   private
 
-  FILES = [
-      InseeExcelFile.new('data_insee_2020/2020-04-10_deces_quotidiens_departement.xlsx', 61..90)
-  ].freeze
-
-  def daily_death(yday)
-    FILES.detect { |file| file.available_ydays.include? yday }
+  def initialize
+    @data = load_data
   end
 end
