@@ -6,7 +6,9 @@ Source : [INSEE](https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-dece
 
 ### Script de téléchargement des fichiers raw
 
-Voir [script de téléchargement](personnes_decedees/download_sources-deces.sh)
+```shell script
+./personnes_decedees/download_sources-deces.sh
+```
 
 ### Format des fichiers raw
 
@@ -31,6 +33,12 @@ Code Officiel Géographique en vigueur au moment de la prise en compte du décè
 - Date de naissance
 - Date du décès
 - Code département du décès
+
+### Création de la base de données
+
+```shell script
+./personnes_decedees/populate_db.rb
+```
 
 ### Database
 
