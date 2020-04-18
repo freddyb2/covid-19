@@ -59,7 +59,7 @@ class Death2020
   private
 
   FILES = [
-      InseeExcelFile.new('data_insee_2020/2020-04-03_deces_quotidiens_departement.xlsx', 61..90)
+      InseeExcelFile.new('data_insee_2020/2020-04-10_deces_quotidiens_departement.xlsx', 61..90)
   ].freeze
 
   def daily_death(yday)
