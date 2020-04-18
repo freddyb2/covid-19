@@ -54,13 +54,10 @@ Dans le fichier `annee.csv`, chaque ligne : `code_departement;nb_habitants`
 
 Death data form INSEE (French Statistic Agency) : https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-decedees/
 
+Nombre de personnes décédées quotidiennement : https://www.insee.fr/fr/information/4470857
+
 Geography referential (commune and departement) : https://geo.api.gouv.fr
 
 Population data time serie from INSEE : https://www.insee.fr/fr/statistiques/1893198
 
 Population data time serie from INSEE - 2020-03-27 Weekly update for Covid : https://www.insee.fr/fr/information/4470857
-
-Number of admissions in hospitals due to influanza 2010-2020 from Sante Publique France : (https://www.santepubliquefrance.fr/)
-
-Nombre de personnes décédées par département - quotidiennement
-https://www.data.gouv.fr/fr/datasets/nombre-de-deces-quotidiens-par-departement/
