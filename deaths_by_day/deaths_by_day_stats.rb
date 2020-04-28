@@ -20,7 +20,7 @@ end
 DEPARTMENTS_CODES = [
     generate_dep_codes('0', (1..9).to_a),
     generate_dep_codes('1', (1..9).to_a),
-    generate_dep_codes('2', %w[A B] + (1..2).to_a + (4..9).to_a),
+    generate_dep_codes('2', %w[A B] + (1..9).to_a),
     generate_dep_codes('3', (0..9).to_a),
     generate_dep_codes('4', (0..9).to_a),
     generate_dep_codes('5', (0..9).to_a),

@@ -36,7 +36,7 @@ def reduce_by_yday_dep(data, hash)
 end
 
 def load_data
-  filename = 'DC_Jan-Avr_2018-2020_det.csv'
+  filename = 'DC_jan2018-avr2020_det.csv'
   lines = File.open(filename).read
   replace_cr_to_unix(lines)
   lines.split(CARRIAGE_UNIX)
